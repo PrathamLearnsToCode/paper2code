@@ -1,0 +1,59 @@
+# Configuration for Attention Is All You Need (Vaswani et al., 2017)
+# Paper: https://arxiv.org/abs/1706.03762
+#
+# CONVENTION:
+#   - Lines with §X.Y cite the paper section specifying this value
+#   - Lines with [UNSPECIFIED] mark choices not stated in the paper
+#   - Lines with [FROM_TABLE] reference Table 3 (Architecture hyperparameters)
+#
+# All hyperparameters in one place. No magic numbers in code.
+
+# ---------------------------------------------------------------------------
+# Model architecture — §3, Table 3 ("base model")
+# ---------------------------------------------------------------------------
+model:
+  d_model: 512             # §3.1, Table 3 — "d_model = 512"
+  n_heads: 8               # §3.2.2, Table 3 — "h = 8"
+  d_ff: 2048               # §3.3, Table 3 — "d_ff = 2048"
+  n_encoder_layers: 6      # §3.1, Table 3 — "N = 6" (encoder)
+  n_decoder_layers: 6      # §3.1, Table 3 — "N = 6" (decoder)
+  dropout: 0.1             # §5.4, Table 3 — "P_drop = 0.1"
+  max_seq_len: 5000        # [UNSPECIFIED] — max length for positional encoding
+  vocab_size: 37000        # §5.1 — "byte-pair encoding... shared source-target vocabulary of about 37000 tokens" (EN-DE)
+  activation: "relu"       # §3.3, Eq. 2 — "max(0, xW_1 + b_1)W_2 + b_2" (ReLU)
+  norm_eps: 1.0e-6         # [UNSPECIFIED] — LayerNorm epsilon, paper does not state
+  tie_weights: true        # §3.4 — "we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation"
+
+# ---------------------------------------------------------------------------
+# Training — §5.3, §5.4
+# ---------------------------------------------------------------------------
+training:
+  optimizer: "adam"         # §5.3 — "We used the Adam optimizer"
+  betas: [0.9, 0.98]       # §5.3 — "β1 = 0.9, β2 = 0.98"
+  eps: 1.0e-9              # §5.3 — "ε = 10^−9"
+  label_smoothing: 0.1     # §5.4 — "label smoothing of value ε_ls = 0.1"
+  warmup_steps: 4000       # §5.3 — "warmup_steps = 4000"
+  total_steps: 100000      # §5.2 — "base models were trained for a total of 100,000 steps"
+  batch_tokens: 25000      # §5.1 — "Each training batch contained a set of sentence pairs containing approximately 25000 source tokens and 25000 target tokens"
+  weight_decay: 0.0        # [UNSPECIFIED] — no weight decay mentioned
+  gradient_clip: null      # [UNSPECIFIED] — no gradient clipping mentioned
+
+  # LR schedule — §5.3, Eq. 3
+  # lr = d_model^(-0.5) * min(step_num^(-0.5), step_num * warmup_steps^(-1.5))
+  schedule: "transformer"  # §5.3, Eq. 3 — custom schedule, not cosine or linear
+
+# ---------------------------------------------------------------------------
+# Data — §5.1
+# ---------------------------------------------------------------------------
+data:
+  dataset: "WMT 2014 EN-DE"       # §5.1 — "WMT 2014 English-German dataset"
+  bpe_tokens: 37000                # §5.1 — "byte-pair encoding... about 37000 tokens"
+  max_seq_len: 512                 # [UNSPECIFIED] — max sequence length for training
+
+# ---------------------------------------------------------------------------
+# Evaluation — §6
+# ---------------------------------------------------------------------------
+eval:
+  metric: "BLEU"                   # §6 — "BLEU score"
+  beam_size: 4                     # §6.1 — "beam search with a beam size of 4"
+  length_penalty: 0.6              # §6.1 — "length penalty α = 0.6"

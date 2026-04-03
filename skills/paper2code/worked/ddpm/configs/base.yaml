@@ -1,0 +1,69 @@
+# Configuration for Denoising Diffusion Probabilistic Models (Ho et al., 2020)
+# Paper: https://arxiv.org/abs/2006.11239
+#
+# CONVENTION:
+#   - Lines with §X.Y cite the paper section specifying this value
+#   - Lines with [UNSPECIFIED] mark choices not stated in the paper
+#   - Lines with [FROM_OFFICIAL_CODE] are resolved from the authors' implementation
+#
+# All hyperparameters in one place. No magic numbers in code.
+
+# ---------------------------------------------------------------------------
+# Diffusion process — §2, §4
+# ---------------------------------------------------------------------------
+diffusion:
+  timesteps: 1000              # §4 — "T = 1000"
+  beta_start: 0.0001           # §4 — "β1 = 10^−4"
+  beta_end: 0.02               # §4 — "βT = 0.02"
+  schedule: "linear"           # §4 — "linearly from β1 = 10^-4 to βT = 0.02"
+  variance_type: "fixed_small" # §3.4 — "setting Σ_θ(x_t, t) = σ²_t I... achieved similar results"
+                               # "fixed_small" = β_t, "fixed_large" = β̃_t
+
+# ---------------------------------------------------------------------------
+# Model architecture — Appendix B, §3.3
+# ---------------------------------------------------------------------------
+model:
+  image_channels: 3            # §4 — RGB images
+  base_channels: 128           # Appendix B — "128 base channels" (CIFAR-10)
+  channel_mults: [1, 2, 2, 2]  # [FROM_OFFICIAL_CODE] — channel multipliers per resolution level
+  num_res_blocks: 2            # [FROM_OFFICIAL_CODE] — residual blocks per level
+  attention_resolutions: [16]  # Appendix B — "attention at 16×16 resolution"
+  dropout: 0.0                 # Appendix B — "dropout 0.0" (CIFAR-10). "dropout 0.1" for bedroom/church
+  time_embed_dim: 128          # [FROM_OFFICIAL_CODE] — sinusoidal timestep embedding dimension
+  num_groups: 32               # [FROM_OFFICIAL_CODE] — groups for GroupNorm
+
+# ---------------------------------------------------------------------------
+# Training — §4, Algorithm 1
+# ---------------------------------------------------------------------------
+training:
+  optimizer: "adam"             # §4 — "Adam"
+  lr: 0.0002                   # §4 — "learning rate 2 × 10^−4"
+  betas: [0.9, 0.999]          # [UNSPECIFIED] — Adam betas not stated, using PyTorch defaults
+  eps: 1.0e-8                  # [UNSPECIFIED] — Adam epsilon not stated
+  weight_decay: 0.0            # [UNSPECIFIED] — no weight decay mentioned
+  total_steps: 800000          # §4 — "We set the learning rate to 2 × 10^−4 without decay"
+                               # "800K iterations for CIFAR10" inferred from training time
+  batch_size: 128              # Appendix B — "batch size 128" (CIFAR-10)
+  gradient_clip: 1.0           # [FROM_OFFICIAL_CODE] — gradient clipping at 1.0
+  schedule: "constant"         # §4 — "without decay" (no LR schedule)
+
+  # EMA — §4
+  ema_decay: 0.9999            # §4 — "exponential moving average... decay factor of 0.9999"
+  ema_start_step: 0            # [UNSPECIFIED] — when to start EMA
+
+# ---------------------------------------------------------------------------
+# Data — §4
+# ---------------------------------------------------------------------------
+data:
+  dataset: "CIFAR-10"          # §4 — "CIFAR10"
+  image_size: 32               # CIFAR-10 images are 32×32
+  augmentation: "random_flip"  # §4 — "random horizontal flips"
+  normalize: true              # [UNSPECIFIED] — normalize images to [-1, 1] (standard for diffusion)
+
+# ---------------------------------------------------------------------------
+# Evaluation — §4
+# ---------------------------------------------------------------------------
+eval:
+  metric: "FID"                # §4 — "FID score"
+  num_samples: 50000           # Standard for FID computation
+  sampling_steps: 1000         # Same as T — full reverse process

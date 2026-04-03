@@ -1,0 +1,62 @@
+# Configuration for {{PAPER_TITLE}}
+# Paper: https://arxiv.org/abs/{{ARXIV_ID}}
+#
+# CONVENTION:
+#   - Lines with §X.Y cite the paper section specifying this value
+#   - Lines with [UNSPECIFIED] mark choices not stated in the paper
+#   - Lines with [FROM_OFFICIAL_CODE] are resolved from the authors' implementation
+#
+# All hyperparameters in one place. No magic numbers in code.
+
+# ---------------------------------------------------------------------------
+# Model architecture
+# ---------------------------------------------------------------------------
+model:
+  # §X.Y — "quote from paper specifying this value"
+  # param_name: value
+
+  # [UNSPECIFIED] — Paper does not state this. Common choices: A, B, C
+  # param_name: value
+
+# ---------------------------------------------------------------------------
+# Training
+# ---------------------------------------------------------------------------
+training:
+  # §X.Y — "quote from paper"
+  # optimizer: adam
+  # lr: 0.0001
+  # betas: [0.9, 0.999]       # [UNSPECIFIED] — using PyTorch Adam defaults
+  # eps: 1.0e-8               # [UNSPECIFIED] — using PyTorch Adam defaults
+  # weight_decay: 0.0         # [UNSPECIFIED] — no weight decay mentioned
+
+  # Learning rate schedule
+  # schedule: cosine           # §X.Y — "we use cosine annealing"
+  # warmup_steps: 1000         # §X.Y — "linear warmup for 1000 steps"
+  # total_steps: 100000        # §X.Y — "we train for 100k steps"
+
+  # Regularization
+  # dropout: 0.1               # §X.Y — "dropout rate of 0.1"
+  # gradient_clip: 1.0         # [UNSPECIFIED] — common default
+
+  # Batch
+  # batch_size: 256            # §X.Y — "batch size of 256"
+  # batch_size_note: "total"   # §X.Y — "total batch size across 8 GPUs" or [UNSPECIFIED]
+
+  # Hardware (for reference, not used in code)
+  # gpus: 8                    # §X.Y — "we use 8 V100 GPUs"
+  # precision: fp32            # [UNSPECIFIED] — mixed precision not mentioned
+
+# ---------------------------------------------------------------------------
+# Data
+# ---------------------------------------------------------------------------
+data:
+  # dataset: "{{DATASET_NAME}}"    # §X.Y — "we evaluate on {{DATASET}}"
+  # seq_length: 512                # §X.Y — "maximum sequence length of 512"
+  # vocab_size: 30000              # §X.Y or [UNSPECIFIED]
+
+# ---------------------------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------------------------
+eval:
+  # metric: "accuracy"             # §X.Y — "we report top-1 accuracy"
+  # eval_every: 1000               # [UNSPECIFIED] — evaluation frequency not stated
