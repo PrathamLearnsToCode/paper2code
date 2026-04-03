@@ -271,6 +271,71 @@ def check_text_quality(text: str) -> bool:
     return True
 
 
+def find_official_code(arxiv_id: str, paper_text: str | None, metadata: dict) -> list[dict]:
+    """Search for official code repositories linked to this paper.
+
+    Checks two sources:
+    1. The paper text itself — GitHub/GitLab URLs, "code available at" phrases
+    2. The arxiv abstract page — authors sometimes add code links there
+
+    Returns a list of dicts with keys: url, source, context
+    """
+    found = []
+    seen_urls = set()
+
+    def add_link(url: str, source: str, context: str = "") -> None:
+        normalized = url.rstrip("/").lower()
+        if normalized not in seen_urls:
+            seen_urls.add(normalized)
+            found.append({"url": url.rstrip("/"), "source": source, "context": context.strip()})
+
+    # --- Source 1: Scan paper text for code URLs ---
+    if paper_text:
+        # Match GitHub/GitLab/Bitbucket repo URLs
+        repo_pattern = r"https?://(?:github\.com|gitlab\.com|bitbucket\.org)/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"
+        for match in re.finditer(repo_pattern, paper_text):
+            url = match.group(0)
+            # Grab surrounding context (up to 120 chars on each side)
+            start = max(0, match.start() - 120)
+            end = min(len(paper_text), match.end() + 120)
+            context = paper_text[start:end].replace("\n", " ")
+            add_link(url, "paper_text", context)
+
+        # Match common phrases that precede code URLs
+        code_phrases = [
+            r"code\s+(?:is\s+)?(?:available|released|open[\s-]?sourced)\s+at\s+(https?://\S+)",
+            r"(?:our|the)\s+code\s+(?:can be found|is hosted)\s+at\s+(https?://\S+)",
+            r"implementation\s+(?:is\s+)?(?:available|released)\s+at\s+(https?://\S+)",
+            r"source\s+code[:\s]+(https?://\S+)",
+        ]
+        for pattern in code_phrases:
+            for match in re.finditer(pattern, paper_text, re.IGNORECASE):
+                url = match.group(1).rstrip(".,;:)")
+                add_link(url, "paper_text", match.group(0))
+
+    # --- Source 2: Scan the arxiv abstract page ---
+    base_id = re.sub(r"v\d+$", "", arxiv_id)
+    abs_url = f"https://arxiv.org/abs/{base_id}"
+    try:
+        resp = requests.get(abs_url, timeout=30)
+        resp.raise_for_status()
+        html = resp.text
+
+        # arxiv shows official code links in the "Code" or "GitHub" badges / sidebar
+        # Look for GitHub links in the abstract page HTML
+        page_repo_matches = re.findall(
+            r'href="(https?://(?:github\.com|gitlab\.com|bitbucket\.org)/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)"',
+            html,
+        )
+        for url in page_repo_matches:
+            add_link(url, "arxiv_page", "Link found on arxiv abstract page")
+
+    except requests.RequestException as e:
+        print(f"  WARNING: Could not fetch arxiv abstract page for code links: {e}", file=sys.stderr)
+
+    return found
+
+
 def main():
     if len(sys.argv) < 3:
         print(f"Usage: {sys.argv[0]} <arxiv_id_or_url> <output_dir>", file=sys.stderr)
@@ -336,6 +401,21 @@ def main():
         f.write("---\n\n")
         f.write(paper_text)
 
+    # Step 6: Search for official code repositories
+    code_links = find_official_code(arxiv_id, paper_text, metadata)
+    if code_links:
+        metadata["official_code"] = code_links
+        # Re-save metadata with code links
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        for link in code_links:
+            print(f"  Found: {link['url']} (source: {link['source']})")
+    else:
+        metadata["official_code"] = []
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        print("  No official code repositories found.")
+
     # Summary
     page_count = paper_text.count("<!-- Page")
     has_math = bool(re.search(r"[\$\\]|\\frac|\\sum|\\int|\\mathbb", paper_text))
@@ -348,6 +428,7 @@ def main():
     print(f"  Math preserved: {'Yes' if has_math else 'No'}")
     print(f"  Figure references found: {'Yes' if has_figures else 'No'}")
     print(f"  Metadata saved: {metadata_path}")
+    print(f"  Official code links: {len(code_links)} found")
     print(f"\nDone.")
 
 
