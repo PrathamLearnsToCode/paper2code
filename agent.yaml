@@ -1,0 +1,25 @@
+spec_version: "0.1.0"
+name: paper2code
+version: 1.0.0
+description: >
+  Converts any arxiv paper into a minimal, citation-anchored Python
+  implementation. Fetches the PDF, audits every implementation detail
+  for ambiguity (SPECIFIED / PARTIALLY_SPECIFIED / UNSPECIFIED), and
+  generates code where every non-trivial line references the exact paper
+  section and equation it implements — never silently filling gaps.
+license: MIT
+model:
+  preferred: anthropic:claude-sonnet-4-6
+skills:
+  - name: paper2code
+    description: >
+      End-to-end pipeline: acquire & parse the arxiv PDF, identify the core
+      contribution, run an ambiguity audit, generate citation-anchored code,
+      and produce a walkthrough notebook with CPU-runnable sanity checks.
+    entry: skills/paper2code/SKILL.md
+runtime:
+  max_turns: 50
+compliance:
+  risk_tier: standard
+  supervision:
+    human_in_the_loop: none
