@@ -52,11 +52,19 @@ def normalize_arxiv_id(input_str: str) -> str:
         input_str = input_str[:-4]
 
     # Validate format: YYMM.NNNNN(vN) or archive/NNNNNNN
-    new_style = re.match(r"^\d{4}\.\d{4,5}(v\d+)?$", input_str)
-    old_style = re.match(r"^[a-z-]+/\d{7}(v\d+)?$", input_str)
+    new_style = re.fullmatch(
+        r"[0-9]{2}(?:0[1-9]|1[0-2])\."
+        r"(?!0{4,5}(?:v|$))[0-9]{4,5}(?:v[1-9][0-9]*)?",
+        input_str,
+    )
+    old_style = re.fullmatch(
+        r"[a-z]+(?:-[a-z]+)*(?:\.[A-Z]{2})?/[0-9]{2}(?:0[1-9]|1[0-2])"
+        r"(?!000(?:v|$))[0-9]{3}(?:v[1-9][0-9]*)?",
+        input_str,
+    )
 
     if not new_style and not old_style:
-        print(f"WARNING: '{input_str}' may not be a valid arxiv ID.", file=sys.stderr)
+        raise ValueError(f"Invalid arxiv ID: {input_str!r}")
 
     return input_str
 
@@ -336,32 +344,10 @@ def find_official_code(arxiv_id: str, paper_text: str | None, metadata: dict) ->
     return found
 
 
-def main():
-    if len(sys.argv) < 3:
-        print(f"Usage: {sys.argv[0]} <arxiv_id_or_url> <output_dir>", file=sys.stderr)
-        sys.exit(1)
-
-    raw_input = sys.argv[1]
-    output_dir = Path(sys.argv[2])
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Step 1: Normalize ID
-    arxiv_id = normalize_arxiv_id(raw_input)
-    print(f"Arxiv ID: {arxiv_id}")
-
-    # Step 2: Fetch metadata
-    print("\n--- Fetching metadata ---")
-    metadata = fetch_metadata(arxiv_id)
-    metadata_path = output_dir / "paper_metadata.json"
-    with open(metadata_path, "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2, ensure_ascii=False)
-    print(f"  Title: {metadata['title']}")
-    print(f"  Authors: {', '.join(metadata['authors'][:5])}{'...' if len(metadata['authors']) > 5 else ''}")
-    print(f"  Categories: {', '.join(metadata['categories'])}")
-
+def extract_paper_text(arxiv_id: str, pdf_path: Path) -> str | None:
+    """Run the existing PDF extraction and HTML fallback sequence."""
     # Step 3: Download and extract PDF
     paper_text = None
-    pdf_path = output_dir / "paper.pdf"
 
     print("\n--- Downloading PDF ---")
     if download_pdf(arxiv_id, pdf_path):
@@ -386,6 +372,39 @@ def main():
     if paper_text is None:
         print("\n--- Trying ar5iv HTML fallback ---")
         paper_text = fetch_ar5iv_html(arxiv_id)
+
+    return paper_text
+
+
+def main():
+    if len(sys.argv) < 3:
+        print(f"Usage: {sys.argv[0]} <arxiv_id_or_url> <output_dir>", file=sys.stderr)
+        sys.exit(1)
+
+    raw_input = sys.argv[1]
+    output_dir = Path(sys.argv[2])
+
+    # Step 1: Normalize ID
+    try:
+        arxiv_id = normalize_arxiv_id(raw_input)
+    except ValueError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Arxiv ID: {arxiv_id}")
+
+    # Step 2: Fetch metadata
+    print("\n--- Fetching metadata ---")
+    metadata = fetch_metadata(arxiv_id)
+    metadata_path = output_dir / "paper_metadata.json"
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+    print(f"  Title: {metadata['title']}")
+    print(f"  Authors: {', '.join(metadata['authors'][:5])}{'...' if len(metadata['authors']) > 5 else ''}")
+    print(f"  Categories: {', '.join(metadata['categories'])}")
+
+    pdf_path = output_dir / "paper.pdf"
+    paper_text = extract_paper_text(arxiv_id, pdf_path)
 
     # Step 5: Save results
     if paper_text is None:
