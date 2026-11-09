@@ -22,7 +22,7 @@
 └─────────────────────────────┘         └──────────────────────────────────────┘
 ```
 
-*[placeholder: animated GIF showing the full pipeline — paper fetch → parsing → ambiguity audit → code generation → walkthrough notebook]*
+Built by [Pratham Grover](https://github.com/PrathamLearnsToCode), founder of [TensorTonic](https://www.tensortonic.com/?ref=paper2code), where you implement ML papers yourself and get graded.
 
 ---
 
@@ -217,3 +217,7 @@ This repo includes fully worked examples to demonstrate output quality:
 Each includes the complete generated output plus an honest `review.md` evaluating what the skill got right and wrong.
 
 ---
+
+## Implement the paper yourself
+
+paper2code writes the implementation for you. If you would rather write it yourself, [TensorTonic](https://www.tensortonic.com/research?ref=paper2code) breaks famous papers such as the Transformer, ResNet, BERT and diffusion models into small coding problems that are graded in the browser.
